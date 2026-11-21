@@ -10,7 +10,7 @@ Dokumen ini menjelaskan secara khusus **arsitektur sistem**, **kombinasi bahasa 
 | :--- | :--- |
 | **Nama Aplikasi** | `BMS Agent` |
 | **Application ID (Package)** | `com.bcp.checkmkagent` (Debug: `com.bcp.checkmkagent.debug`) |
-| **Versi Agen (Checkmk)** | `Agen BMS : 1.0.2` (`versionName = "1.0.2"`, `versionCode = 22`) |
+| **Versi Agen (Checkmk)** | `Agen BMS : 1.0.2` (`versionName = "1.0.2"`, `versionCode = 23`) |
 | **Minimum / Target Android SDK** | `minSdk 26` (Android 8.0 Oreo) s/d `compileSdk 35` (Android 15) |
 | **Arsitektur CPU (ABI)** | `arm64-v8a` (64-bit ARM), `armeabi-v7a` (32-bit ARM), `x86_64` (Emulator/x86 Tablet) |
 | **Port Monitoring Default** | TCP `6556` (Pull Primary) + HTTP/HTTPS POST (Push Backup Hybrid) |

@@ -11,14 +11,18 @@ Dibangun dengan menerapkan prinsip **Final Skill** (*Think Before Coding*, *Simp
 ```text
 cmkagent-rust/
 ├── Cargo.toml                        # Workspace root (opt-level="z", lto=true, strip=true, panic="abort")
+├── README.md                         # Panduan utama instalasi & operasional (Linux, Windows, Android)
+├── about.md                          # Dokumentasi khusus arsitektur & bahasa pemrograman APK Android (Java + Rust JNI)
 ├── crates/
-│   ├── cmkagent-core/                # Engine protokol Checkmk, TCP/6556 server, Ping 4x/1m + 30d log, Cache TTL
-│   ├── cmkagent-desktop/             # Binary native untuk Linux & Windows Service
+│   ├── cmkagent-core/                # Engine protokol Checkmk, TCP/6556 server, Ping 4x/1m (ping_loss_1m + 1h) & 30d log
+│   ├── cmkagent-desktop/             # Binary native untuk Linux & Windows Service (+ Static CRT Windows)
 │   │   └── src/
+│   │       ├── tls/                  # Native Checkmk 2.5 mTLS engine (rustls + ring, CSR PKCS#10, auto-renew, tls.log)
+│   │       ├── updater.rs            # Auto-updater binary 4 jam (SHA-256 + magic header MZ/ELF + random jitter)
 │   │       ├── linux/                # Collector native Linux (/proc, /sys, smartctl, HDSentinel, dmidecode)
 │   │       └── windows/              # Collector native Windows (Win32 API, HWiNFO VSB, CrystalDiskInfo, WMI)
 │   └── cmkagent-android-jni/         # Library JNI (`libcmkagent_jni.so`) untuk Android APK
-└── android/                          # Aplikasi Android (Java + Rust JNI, SDK 26–35)
+└── android/                          # Aplikasi Android (Java 17 + Rust JNI, SDK 26–35)
 ```
 
 ---
@@ -47,7 +51,7 @@ Ketika server Checkmk atau **BMS (Borwita Monitoring Service)** menarik data dar
 | 15 | `Info_OS` | Harian 16:00 | Nama distro (`PRETTY_NAME`), versi kernel, & arsitektur |
 | 16 | `Info_RAM_Usage` | Real-time (60s) | Persentase RAM terpakai, Used GB, Free GB, & Total GB (`WARN` 85%, `CRIT` 95%) |
 | 17 | `Info_Remote_Support` | Harian 16:00 | ID AnyDesk & ID RustDesk (CLI, Flatpak, `/etc/rustdesk_id.txt`, `RustDesk.toml`) |
-| 18 | `Ping_192.168.122.10`, `Ping_8.8.8.8`, `Ping_Gateway` | 4x/menit (1h Window) | Ringkasan 1 jam (240 paket) + detail histori 24 jam & retensi log 30 hari |
+| 18 | `Ping_192.168.122.10`, `Ping_8.8.8.8`, `Ping_Gateway` | 4x/menit (1m & 1h) | Grafik real-time `Ping loss 1m` (`ping_loss_1m` 0–100%) + ringkasan 1 jam (`pl`, `rta`) + histori putus 24 jam (*terbaru dulu*) & log 30 hari |
 | 19 | `Storage_Usage_<Mount>` | Harian 16:00 | Pemakaian partisi fisik (`Storage_Usage_root`, `Storage_Usage_mnt_...`) tanpa partisi virtual/snap |
 
 ---
@@ -67,7 +71,7 @@ Ketika server Checkmk atau **BMS (Borwita Monitoring Service)** menarik data dar
 | 10 | `Info_Network_<NIC>` | Real-time (60s) | IPv4, Total Download/Upload, `RX Rate` & `TX Rate` untuk adapter fisik yang `Up` |
 | 11 | `Info_Office` | Harian 16:00 | Multi-lisensi MS Office (`OSPP.VBS` + versi ClickToRun + 5 karakter Product Key) + LibreOffice + OnlyOffice |
 | 12 | `Info_OS` | Harian 16:00 | Edisi Windows 10/11, pemetaan tahun (`25H2` -> `Windows 11 2025 (25H2)`), Build, Status Lisensi & Key |
-| 13 | `Ping_192.168.122.10`, `Ping_8.8.8.8`, `Ping_Gateway` | 4x/menit (1h Window) | Ringkasan 1 jam (240 paket) + detail kondisi jaringan 24 jam & log 30 hari |
+| 13 | `Ping_192.168.122.10`, `Ping_8.8.8.8`, `Ping_Gateway` | 4x/menit (1m & 1h) | Grafik real-time `Ping loss 1m` (`ping_loss_1m` 0–100%) + ringkasan 1 jam (`pl`, `rta`) + histori putus 24 jam (*terbaru dulu*) & log 30 hari |
 | 14 | `RAM_Usage` | Real-time (60s) | Persentase RAM terpakai, Used Space GB, Free GB, & Total GB |
 | 15 | `Remote_Access_ID` | Harian 16:00 | `OK: AnyDesk: <ID> \| RustDesk: <ID> \| AnyViewer: <ID>` |
 | 16 | `Storage_Health_<Model>` | Harian 16:00 | Prioritas CrystalDiskInfo `diskinfo.txt` (menembus Intel RST/VMD RAID) -> `smartctl` -> `StorageReliabilityCounter` |
@@ -75,9 +79,13 @@ Ketika server Checkmk atau **BMS (Borwita Monitoring Service)** menarik data dar
 
 ---
 
-### C. Android APK Agent (`cmkagent-android.apk` — 14 Services + Interactive UI)
+### C. Android APK Agent (`cmkagent-android-release.apk` — 14 Services + Interactive UI)
+> Dokumentasi lengkap arsitektur internal & bahasa pemrograman khusus Android (Java 17 + Rust JNI) tersedia di **[about.md](about.md)**.
+
+- **Unduh Langsung APK Terbaru (`auto-latest`):**
+  `https://github.com/Dot-Dodik/public-rilis/releases/download/auto-latest/cmkagent-android-release.apk`
 - **Service yang dikirim ke Server:**
-  `Check_MK`, `Check_MK Agent`, `Check_MK Discovery`, `Check_MK HW/SW Inventory`, `Agent_Status`, `Android_Info`, `Health_Battery` (1-baris lengkap dengan mAh, siklus, suhu, voltase, arus), `Ping_8.8.8.8`, `Ping_192.168.122.10`, `Ping_Gateway`, `RAM_Usage`, `Storage_Usage`, `Transport_Status`, dan `WiFi_Status` (termasuk deteksi perpindahan Roaming AP BSSID 1 jam terakhir).
+  `Check_MK`, `Check_MK Agent`, `Check_MK Discovery`, `Check_MK HW/SW Inventory`, `Agent_Status`, `Android_Info`, `Health_Battery` (1-baris lengkap dengan mAh, siklus, suhu, voltase, arus), `Ping_8.8.8.8`, `Ping_192.168.122.10`, `Ping_Gateway` (dilengkapi grafik real-time `Ping loss 1m` 0–100% di samping grafik `Packet loss` 1 jam & `Round trip average`, daftar rentang jam putus 24 jam terbaru dulu, serta penyimpanan otomatis IP gateway terakhir saat Wi-Fi drop), `RAM_Usage`, `Storage_Usage`, `Transport_Status`, dan `WiFi_Status` (termasuk deteksi perpindahan Roaming AP BSSID 1 jam terakhir).
 - **Fitur Tampilan Aplikasi Android:**
   - **Tombol `▶ START AGENT` & `■ STOP AGENT`:** Menyalakan atau menghentikan *foreground service* dan listener TCP/6556 kapan saja langsung dari aplikasi.
   - **Tombol `EXPAND ALL` & `COLLAPSE ALL`:** Membuka atau menutup seluruh kartu menu sekaligus dengan satu sentuhan.
@@ -215,40 +223,44 @@ Uji payload output agen:
 
 Paksa cek & terapkan update binary terbaru dari GitHub sekarang:
 ```powershell
-& "C:\Program Files\cmkagent\cmkagent.exe" update-check --config "C:\ProgramData\cmkagent\cmkagent.toml"; taskkill /F /IM cmkagent.exe 2>$null; Start-Service cmkagent
+& "C:\Program Files\cmkagent\cmkagent.exe" update-check --config "C:\ProgramData\cmkagent\cmkagent.toml"; Restart-Service cmkagent
 ```
 
 ---
 
 ### C. Native Enkripsi TLS Checkmk 2.5 (Windows 10/11 & Linux)
-`cmkagent-rust` kini mendukung **Mutual TLS (mTLS) native Checkmk 2.5** (wire header `16` + TLS 1.3/1.2 `rustls` + kompresi `zlib`) dalam satu binary tanpa membutuhkan `cmk-agent-ctl` atau OpenSSL OS:
+`cmkagent-rust` mendukung **Mutual TLS (mTLS) native Checkmk 2.5** (wire header `16` + TLS 1.3/1.2 `rustls` + kompresi `zlib`) dalam satu binary tanpa membutuhkan `cmk-agent-ctl` atau OpenSSL OS:
 
 - **Auto-Import Host Lama:** Jika perangkat sebelumnya sudah pernah register TLS dengan agen Checkmk bawaan (`registered_connections.json`), `cmkagent install` otomatis menyalin & memakai sertifikat lamanya sehingga langsung hijau `OK` di Checkmk Server tanpa perlu *Remove TLS registration*.
 - **Mode Default (`[tls] mode = "auto"`):**
   - Begitu host terdaftar/terimpor TLS, port `6556` **hanya** menerima handshake mTLS terenkripsi dari Server Checkmk (koneksi plaintext ditolak).
   - Untuk host baru yang belum terdaftar, bisa diaktifkan langsung saat install atau kapan saja lewat `cmkagent register`.
-- **Auto-Renewal:** Worker latar belakang memperbarui sertifikat otomatis sebelum kedaluwarsa (`< 45 hari`) maupun untuk kompatibilitas Checkmk 3.0 (*Authority Key Identifier*).
+- **Auto-Renewal & Log Diagnostik (`tls.log`):** Worker latar belakang memperbarui sertifikat otomatis sebelum kedaluwarsa (`< 45 hari`) maupun untuk kompatibilitas Checkmk 3.0 (*Authority Key Identifier*). Seluruh aktivitas dan diagnostik handshake tercatat di `<data_dir>/tls.log` dan ditampilkan pada bagian `[Log TLS Terakhir]` saat menjalankan `cmkagent tls-status`.
+- **Catatan Penting Port & Parameter Registrasi:**
+  - Gunakan port **Agent Receiver** Checkmk (default `:8000`, misal `'192.168.55.112:8000'`), **bukan** port Web UI (`8081`/`80`). Jika port tidak ditulis, agen akan mencoba mendeteksinya secara otomatis.
+  - `--hostname` adalah **nama host persis seperti yang didaftarkan di Checkmk** (mis. `'AGEN-TESTRUN'`), sedangkan `--user` adalah akun login/automation Checkmk (mis. `'cmkadmin'`).
+  - Di PowerShell, bungkus nilai parameter dengan tanda kutip tunggal `'...'` dan **jangan** menyertakan tanda kurung sudut `<` atau `>`.
 
-Daftar TLS langsung setelah install / pada perangkat yang sudah terpasang:
+Daftar TLS setelah install / pada perangkat yang sudah terpasang:
 ```bash
 # Linux
-sudo cmkagent register --server <IP-CHECKMK> --site <NAMA-SITE> --user <AUTOMATION-USER> --password <SECRET> --trust-cert
+sudo cmkagent register --server '192.168.55.112:8000' --site 'cmk' --hostname 'NAMA-HOST-CHECKMK' --user 'cmkadmin' --password 'PASSWORD-CHECKMK' --trust-cert
 sudo cmkagent tls-status
 ```
 ```powershell
 # Windows (PowerShell Admin)
-& "C:\Program Files\cmkagent\cmkagent.exe" register --server <IP-CHECKMK> --site <NAMA-SITE> --user <AUTOMATION-USER> --password <SECRET> --trust-cert
+& "C:\Program Files\cmkagent\cmkagent.exe" register --server '192.168.55.112:8000' --site 'cmk' --hostname 'NAMA-HOST-CHECKMK' --user 'cmkadmin' --password 'PASSWORD-CHECKMK' --trust-cert
 & "C:\Program Files\cmkagent\cmkagent.exe" tls-status
 ```
 
 Install + register TLS sekaligus dalam 1 baris (Windows PowerShell Admin):
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/Dot-Dodik/public-rilis/releases/download/auto-latest/cmkagent-windows-x86_64.exe" -OutFile "$env:TEMP\cmkagent-setup.exe"; & "$env:TEMP\cmkagent-setup.exe" install --auto-tools --tls-server <IP-CHECKMK> --tls-site <NAMA-SITE> --tls-user <USER> --tls-password <PASS> --trust-cert
+Invoke-WebRequest -Uri "https://github.com/Dot-Dodik/public-rilis/releases/download/auto-latest/cmkagent-windows-x86_64.exe" -OutFile "$env:TEMP\cmkagent-setup.exe"; & "$env:TEMP\cmkagent-setup.exe" install --auto-tools --tls-server '192.168.55.112:8000' --tls-site 'cmk' --hostname 'NAMA-HOST-CHECKMK' --tls-user 'cmkadmin' --tls-password 'PASSWORD-CHECKMK' --trust-cert
 ```
 
 Install + register TLS sekaligus dalam 1 baris (Linux):
 ```bash
-curl -fsSL https://github.com/Dot-Dodik/public-rilis/releases/download/auto-latest/install-linux.sh | sudo bash -s -- --auto-tools --tls-server <IP-CHECKMK> --tls-site <NAMA-SITE> --tls-user <USER> --tls-password <PASS> --trust-cert
+curl -fsSL https://github.com/Dot-Dodik/public-rilis/releases/download/auto-latest/install-linux.sh | sudo bash -s -- --auto-tools --tls-server '192.168.55.112:8000' --tls-site 'cmk' --hostname 'NAMA-HOST-CHECKMK' --tls-user 'cmkadmin' --tls-password 'PASSWORD-CHECKMK' --trust-cert
 ```
 
 ---

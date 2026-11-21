@@ -220,8 +220,46 @@ Paksa cek & terapkan update binary terbaru dari GitHub sekarang:
 
 ---
 
-### C. Subcommand CLI (`cmkagent` / `cmkagent.exe`)
-- `cmkagent install [--auto-tools]` — Pasang/upgrade agen sebagai Background Service (`systemd` / Windows Service) dengan Clean Replace + setup tooling hardware.
+### C. Native Enkripsi TLS Checkmk 2.5 (Windows 10/11 & Linux)
+`cmkagent-rust` kini mendukung **Mutual TLS (mTLS) native Checkmk 2.5** (wire header `16` + TLS 1.3/1.2 `rustls` + kompresi `zlib`) dalam satu binary tanpa membutuhkan `cmk-agent-ctl` atau OpenSSL OS:
+
+- **Auto-Import Host Lama:** Jika perangkat sebelumnya sudah pernah register TLS dengan agen Checkmk bawaan (`registered_connections.json`), `cmkagent install` otomatis menyalin & memakai sertifikat lamanya sehingga langsung hijau `OK` di Checkmk Server tanpa perlu *Remove TLS registration*.
+- **Mode Default (`[tls] mode = "auto"`):**
+  - Begitu host terdaftar/terimpor TLS, port `6556` **hanya** menerima handshake mTLS terenkripsi dari Server Checkmk (koneksi plaintext ditolak).
+  - Untuk host baru yang belum terdaftar, bisa diaktifkan langsung saat install atau kapan saja lewat `cmkagent register`.
+- **Auto-Renewal:** Worker latar belakang memperbarui sertifikat otomatis sebelum kedaluwarsa (`< 45 hari`) maupun untuk kompatibilitas Checkmk 3.0 (*Authority Key Identifier*).
+
+Daftar TLS langsung setelah install / pada perangkat yang sudah terpasang:
+```bash
+# Linux
+sudo cmkagent register --server <IP-CHECKMK> --site <NAMA-SITE> --user <AUTOMATION-USER> --password <SECRET> --trust-cert
+sudo cmkagent tls-status
+```
+```powershell
+# Windows (PowerShell Admin)
+& "C:\Program Files\cmkagent\cmkagent.exe" register --server <IP-CHECKMK> --site <NAMA-SITE> --user <AUTOMATION-USER> --password <SECRET> --trust-cert
+& "C:\Program Files\cmkagent\cmkagent.exe" tls-status
+```
+
+Install + register TLS sekaligus dalam 1 baris (Windows PowerShell Admin):
+```powershell
+Invoke-WebRequest -Uri "https://github.com/Dot-Dodik/public-rilis/releases/download/auto-latest/cmkagent-windows-x86_64.exe" -OutFile "$env:TEMP\cmkagent-setup.exe"; & "$env:TEMP\cmkagent-setup.exe" install --auto-tools --tls-server <IP-CHECKMK> --tls-site <NAMA-SITE> --tls-user <USER> --tls-password <PASS> --trust-cert
+```
+
+Install + register TLS sekaligus dalam 1 baris (Linux):
+```bash
+curl -fsSL https://github.com/Dot-Dodik/public-rilis/releases/download/auto-latest/install-linux.sh | sudo bash -s -- --auto-tools --tls-server <IP-CHECKMK> --tls-site <NAMA-SITE> --tls-user <USER> --tls-password <PASS> --trust-cert
+```
+
+---
+
+### D. Subcommand CLI (`cmkagent` / `cmkagent.exe`)
+- `cmkagent install [--auto-tools] [--tls-server ... --tls-site ... --tls-user ... --tls-password ...]` — Pasang/upgrade agen sebagai Background Service + opsional langsung registrasi mTLS.
+- `cmkagent register --server <IP[:PORT]> --site <SITE> --user <USER> [--password <PASS> | --ott <TOKEN>] [--hostname <HOST>] [--trust-cert]` — Daftarkan enkripsi mTLS ke Checkmk 2.5 Agent Receiver.
+- `cmkagent tls-status` — Tampilkan status koneksi mTLS, UUID, issuer CA, dan masa berlaku sertifikat.
+- `cmkagent renew-cert [--force]` — Perbarui sertifikat mTLS secara manual ke server Checkmk.
+- `cmkagent import-tls [PATH]` — Impor manual file `registered_connections.json` milik Checkmk agent bawaan.
+- `cmkagent delete-tls [SITE|UUID|--all]` — Hapus registrasi TLS lokal.
 - `cmkagent uninstall` — Hentikan dan hapus service `cmkagent`.
 - `cmkagent run [--config PATH]` — Menjalankan agen di foreground (mode console/debug).
 - `cmkagent service [--config PATH]` — Menjalankan agen sebagai daemon `systemd` atau Windows Service.

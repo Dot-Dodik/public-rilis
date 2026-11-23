@@ -10,7 +10,7 @@ Dokumen ini menjelaskan secara khusus **arsitektur sistem**, **kombinasi bahasa 
 | :--- | :--- |
 | **Nama Aplikasi** | `BMS Agent` |
 | **Application ID (Package)** | `com.bcp.checkmkagent` (Debug: `com.bcp.checkmkagent.debug`) |
-| **Versi Agen (Checkmk)** | `Agen BMS : 1.0.2` (`versionName = "1.0.2"`, `versionCode = 23`) |
+| **Versi Agen (Checkmk)** | `Agen BMS : 1.3.8` (`versionName = "1.3.8"`, `versionCode` naik otomatis tiap build CI) |
 | **Minimum / Target Android SDK** | `minSdk 26` (Android 8.0 Oreo) s/d `compileSdk 35` (Android 15) |
 | **Arsitektur CPU (ABI)** | `arm64-v8a` (64-bit ARM), `armeabi-v7a` (32-bit ARM), `x86_64` (Emulator/x86 Tablet) |
 | **Port Monitoring Default** | TCP `6556` (Pull Primary) + HTTP/HTTPS POST (Push Backup Hybrid) |
@@ -163,7 +163,7 @@ flowchart TD
 ## 6. Daftar 14 Service Checkmk yang Dihasilkan APK Android
 
 1. `Check_MK` — Status eksekusi pull & waktu respons agen.
-2. `Check_MK Agent` — Informasi versi `Agen BMS : 1.0.2` & OS `android`.
+2. `Check_MK Agent` — Informasi versi `Agen BMS : 1.3.8` & OS `android`.
 3. `Check_MK Discovery` — Pemeriksaan service baru (0 *unmonitored clutter*).
 4. `Check_MK HW/SW Inventory` — Inventaris CPU ARM/x86, RAM, kapasitas flash internal (`mmcblk0`), versi Android, & seluruh paket APK terinstal (cache 6 jam).
 5. `Agent_Status` — Statistik pull diterima/ditolak, IP server Checkmk penarik terakhir, dan mode akses jaringan.
